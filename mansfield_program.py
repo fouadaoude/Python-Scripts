@@ -74,23 +74,39 @@ class Employee:
                     if time == "1":
                         time = self.get_current_datetime()
                     else:
-                        time = input("Enter check in time for {employee}: ".format(employee=employee_info[option-1][1]))                        
-                    print(time)
-                    self.insert_check_in(time, userID)
+                        time = input("Enter check in time for {employee}: ".format(employee=employee_info[option-1][1]))                                                                                        
+                    print(time)                    
+                    selected_user = employee_info[option-1]
+                    self.insert_check_in(time, selected_user)
                 
         except ValueError:
             print("Something went wrong")
 
-    def insert_check_in(self, time, employee_info):
-        if (employee_info):
-            userID = employee_info[option-1][0]
-            try:
-                db = connect()
-                cursor = db.cursor()
-                stmt = ("INSERT INTO attendance (userID, firstname, lastname, checkin, checkout) VALUES (%s, %s, %s, %s, %s)")
-                val = (userID, )
-            except ValueError:
-                print('Something went wrong inserting into database')
+    def insert_check_in(self, time, selected_user):
+        #return all_employees if len(all_employees) > 1 else "Empty"
+        if (selected_user):
+            #check if there is a userid if there isnt set it to 0 and do not carry on the insertion into db
+            userID = selected_user[0] if selected_user[0] else 0
+            if userID != 0:
+                firstname = selected_user[1] if len(selected_user[1]) > 0 else "Empty"
+                lastname = selected_user[2] if len(selected_user[2]) > 0 else "Empty"
+                checkin = time
+                checkout = "Pending"
+                print(selected_user[1])
+                try:
+                    print(checkin)
+                    db = connect()
+                    cursor = db.cursor()
+                    stmt = ("INSERT INTO attendance (userID, firstname, lastname, checkin, checkout) VALUES (%s, %s, %s, %s, %s)")
+                    val = [userID, firstname, lastname, checkin, checkout]
+                    cursor.execute(stmt, val)
+                    db.commit()
+                    return "Inserted check in time successfully"
+                except ValueError:
+                    print('Something went wrong inserting checkin time into database')
+            else:
+                print("Missing userID please try again.")
+                return
 
     def get_current_datetime(self):
         return time.strftime('%Y-%m-%d %H:%M:%S')
