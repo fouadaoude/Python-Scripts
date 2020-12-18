@@ -118,7 +118,8 @@ class Employee:
         attendance = self.get_attendance(selected_user)
         
         if attendance:
-            print(attendance)
+            #get attendance and check if todays date has already been inserted
+            print(attendance)            
 
     def update_check_in(self, selected_user, time=None):        
         if selected_user:
