@@ -85,12 +85,19 @@ class Employee:
                     if int(time) == 0:                        
                         self.update_check_in(selected_user, time=self.get_current_datetime())
                         break
-                    elif int(time) == 1:                                        
+                    elif int(time) == 1:   
+                        is_inserted, attendanceID = self.check_if_already_inserted(selected_user)
+                        if is_inserted and attendanceID:
+                            self.update_check_in(selected_user)
+                            break
                         input_time = self.get_current_datetime()
                         self.insert_check_in(input_time, selected_user)
                         break
-                    elif int(time) == 2:
-                        input_time = input("Enter check in time for {employee}: ".format(employee=employee_info[option-1][1]))                                                                                        
+                    elif int(time) == 2:                        
+                        is_inserted, attendanceID = self.check_if_already_inserted(selected_user)       
+                        if is_inserted and attendanceID:
+                            self.update_check_in(selected_user)
+                            break
                         self.insert_check_in(input_time, selected_user)
                         break
                     else:
@@ -103,11 +110,11 @@ class Employee:
 
     def get_attendance(self, selected_user):
         if selected_user:
-            
+            userID = selected_user[0]
             try:
                 db = connect()
                 cursor = db.cursor()
-                stmt = ("SELECT * FROM attendance WHERE userID = '{userID}'".format(userID=selected_user))
+                stmt = ("SELECT * FROM attendance WHERE userID = '{userID}'".format(userID=userID))
                 cursor.execute(stmt)
                 attendance = cursor.fetchall()
                 return attendance
@@ -116,55 +123,78 @@ class Employee:
             
     def check_if_already_inserted(self, selected_user):
         attendance = self.get_attendance(selected_user)
-        
+        #get attendance and check if todays date has already been inserted
         if attendance:
-            #get attendance and check if todays date has already been inserted
-            print(attendance)            
+            todays_date = get_date()
+            for today in attendance:            
+                if today[4] in today:
+                    print("inhere", today[4])
+                    return True, today[0]
+                else:
+                    return False
+                
+                     
+    def format_time(self, time=None):
+        if time:
+            return str(get_weekday()) + ' ' + time + ' ' + str(get_date())
+        else:
+            return str(get_weekday()) + ' ' + str(self.get_current_datetime())
+
 
     def update_check_in(self, selected_user, time=None):        
         if selected_user:
-            if time:
-                try:                    
-                    formatted_time = str(get_weekday()) + ' ' + time
-                    print(formatted_time)
-                except ValueError:
-                    print("Line 122 Error")
-            else:
-                try:
-                    print("Enter new checkin time for today:")
-                    time = input("")                
-                    formatted_time = str(get_weekday()) + ' ' + time + ' ' + str(get_date())
-                    print(formatted_time)
-                except ValueError:
-                    print("Line 127 Error")
-                            
-
-            if formatted_time:
-                self.check_if_already_inserted(selected_user)
-                print("Would you like to update checkin time for today to {time}?".format(time=formatted_time if len(formatted_time.split()) == 3 else formatted_time))
+            is_inserted, attendanceID = self.check_if_already_inserted(selected_user)                
+            if is_inserted and attendanceID:
+                print("Would you like to update checkin time for today?")
                 option = input("Y/N\n")
-
                 if option.lower() in ['y','yes']: 
-                    userID = selected_user[0] if selected_user[0] else 0
-                    firstname = selected_user[1] if len(selected_user[1]) > 0 else "Empty"
-                    lastname = selected_user[2] if len(selected_user[2]) > 0 else "Empty"
-                    checkin = formatted_time
-                    checkout = "Pending"                   
-                    
-                    try:
-                        db = connect()
-                        cursor = db.cursor()
-                        stmt = ("UPDATE attendance SET checkin = '{time}' WHERE userID = '{userID}';".format(time=checkin, userID=userID))                                        
-                        cursor.execute(stmt)
-                        db.commit()
+                    while True:
                         clear()
-                        return print("Updated Successfully")
+                        print("[1] Current time")
+                        print("[2] Custom time")
+                        option = input("")                        
+                        if int(option) == 2:
+                            print("Enter custom time for {employee}".format(employee=selected_user[1]))
+                            time = input("")                    
+                            formatted_time = self.format_time(time)
+                            print("Change todays check in for {employee} to {format_time}?".format(employee=selected_user[1], format_time=formatted_time))
+                            option = input("")
+                            if option.lower() in ['y', 'yes']:
+                                break
+                            else:
+                                self.manager_view()                                        
+                        elif int(option) == 1:         
+                            time = self.get_current_datetime()        
+                            formatted_time = self.format_time()
+                            print(formatted_time)
+                            break     
+        else:
+            self.manager_view()                                   
 
-                    except mysql.connector.Error as e:
-                        return print("Error updating checkin field {}".format(e))
+        if not self.check_if_already_inserted(selected_user):                
+            userID = selected_user[0] if selected_user[0] else 0
+            firstname = selected_user[1] if len(selected_user[1]) > 0 else "Empty"
+            lastname = selected_user[2] if len(selected_user[2]) > 0 else "Empty"
+            checkin = formatted_time
+            checkout = "Pending"                   
+                    
+            try:
+                db = connect()
+                cursor = db.cursor()
+                stmt = ("UPDATE attendance SET checkin = '{time}' WHERE userID='{userID}' AND attendanceID='{attendanceID}';".format(time=checkin, userID=userID,attendanceID=attendanceID))                                        
+                cursor.execute(stmt)
+                db.commit()
+                clear()
+                return print("Updated Successfully")
+
+            except mysql.connector.Error as e:
+                return print("Error updating checkin field {}".format(e))
 
     def insert_check_in(self, time, selected_user):
-        if (selected_user):
+        is_inserted = self.check_if_already_inserted
+        if is_inserted:            
+            self.update_check_in(selected_user, time)        
+        if selected_user and is_inserted == False:
             #check if there is a userid if there isnt set it to 0 and do not carry on the insertion into db
             userID = selected_user[0] if selected_user[0] else 0
 
